@@ -20,8 +20,7 @@ lopdf = { workspace = true }
 
 [features]
 default = []
-html = ["printpdf"]
-crypto = []
+html = ["printpdf/html"]
 
 [dependencies.printpdf]
 workspace = true

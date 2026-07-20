@@ -1,0 +1,51 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/easypdf",
+    "crates/easypdf-core",
+    "crates/easypdf-derive",
+    "crates/easypdf-reader",
+    "crates/easypdf-writer",
+    "crates/easypdf-manipulate",
+    "crates/easypdf-template",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/easypdf-rs/easypdf-rs"
+readme = "README.md"
+
+[workspace.dependencies]
+# --- Core foundations ---
+thiserror = "2.0.18"
+chrono = { version = "0.4.41", default-features = false, features = ["std"] }
+
+# --- PDF engines ---
+lopdf = { version = "0.34", features = ["nom_parser"] }
+printpdf = { version = "0.8", default-features = false }
+# justpdf = "0.1"  # Future alternative reader
+
+# --- Image handling ---
+image = { version = "0.25", default-features = false }
+
+# --- Proc-macro ---
+syn = { version = "2.0.104", features = ["full"] }
+quote = "1.0.40"
+proc-macro2 = "1.0.103"
+proc-macro-crate = "3.4.0"
+
+# --- Testing ---
+tempfile = "3.20.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

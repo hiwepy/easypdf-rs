@@ -1,0 +1,21 @@
+[package]
+name = "easypdf-derive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Proc-macro derive for PdfModel trait in easypdf-rs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true
+proc-macro-crate.workspace = true
+
+[dev-dependencies]
+easypdf-core = { path = "../easypdf-core" }

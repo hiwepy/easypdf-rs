@@ -1,0 +1,13 @@
+[package]
+name = "easypdf-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Core types, traits, enums, converters, and errors for easypdf-rs"
+
+[dependencies]
+thiserror.workspace = true
+chrono.workspace = true

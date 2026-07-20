@@ -1,0 +1,20 @@
+[package]
+name = "easypdf"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+description = "Easy PDF manipulation library for Rust — builder API for creating, reading, manipulating, and filling PDFs"
+
+[dependencies]
+easypdf-core = { path = "../easypdf-core" }
+easypdf-derive = { path = "../easypdf-derive" }
+easypdf-reader = { path = "../easypdf-reader" }
+easypdf-writer = { path = "../easypdf-writer" }
+easypdf-manipulate = { path = "../easypdf-manipulate" }
+easypdf-template = { path = "../easypdf-template" }
+
+[dev-dependencies]
+tempfile.workspace = true

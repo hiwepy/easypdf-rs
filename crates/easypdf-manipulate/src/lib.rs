@@ -155,12 +155,12 @@ impl PdfManipulator {
     ///
     /// Returns `PdfError::InvalidPage` if the range is out of bounds.
     pub fn extract_pages(&self, range: std::ops::Range<usize>) -> Result<lopdf::Document> {
-        let pages = self.doc.get_pages();
+        let pages: Vec<lopdf::ObjectId> = self.doc.page_iter().collect();
         let mut new_doc = lopdf::Document::new();
 
         for idx in range {
             let page_id = pages
-                .get(&(idx as u32))
+                .get(idx)
                 .copied()
                 .ok_or(PdfError::InvalidPage(idx))?;
 

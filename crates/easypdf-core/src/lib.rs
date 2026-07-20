@@ -231,7 +231,6 @@ mod tests {
 
     #[test]
     fn test_pdf_image_from_path_temp() {
-        use std::io::Write;
         let dir = std::env::temp_dir();
         let path = dir.join("easypdf_test_real.png");
         // Create a minimal PNG

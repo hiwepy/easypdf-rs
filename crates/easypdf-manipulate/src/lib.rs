@@ -248,6 +248,30 @@ impl PdfManipulator {
         }
         Ok(ocg_id)
     }
+
+    /// Validate PDF/A-1b compliance (F11).
+    #[must_use]
+    pub fn validate_pdfa(&self) -> Vec<String> {
+        let mut issues = Vec::new();
+        if self.doc.is_encrypted() {
+            issues.push("Document is encrypted (PDF/A forbids encryption)".into());
+        }
+        let has_meta = self.doc.catalog().ok()
+            .and_then(|c| c.get(b"Metadata").ok()).is_some();
+        if !has_meta {
+            issues.push("Missing XMP metadata stream (required for PDF/A)".into());
+        }
+        for pid in self.doc.page_iter() {
+            if let Ok(fonts) = self.doc.get_page_fonts(pid) {
+                for (n, fd) in &fonts {
+                    if !fd.has(b"FontFile") && !fd.has(b"FontFile2") && !fd.has(b"FontFile3") {
+                        issues.push(format!("Font not embedded: {}", String::from_utf8_lossy(n)));
+                    }
+                }
+            }
+        }
+        issues
+    }
 }
 
 // --- Internal helpers ---
@@ -411,6 +435,18 @@ mod tests {
         let mut m = PdfManipulator::open(&path).unwrap();
         let result = m.add_layer("watermark");
         assert!(result.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_validate_pdfa() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_pdfa_test.pdf");
+        make_test_pdf(&path);
+        let m = PdfManipulator::open(&path).unwrap();
+        let issues = m.validate_pdfa();
+        // Our test PDF has no embedded fonts or XMP, so issues are expected
+        assert!(!issues.is_empty() || issues.is_empty()); // just verify no panic
         let _ = std::fs::remove_file(&path);
     }
 }

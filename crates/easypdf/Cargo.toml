@@ -15,6 +15,7 @@ easypdf-reader = { path = "../easypdf-reader" }
 easypdf-writer = { path = "../easypdf-writer" }
 easypdf-manipulate = { path = "../easypdf-manipulate" }
 easypdf-template = { path = "../easypdf-template" }
+easypdf-layout = { path = "../easypdf-layout" }
 lopdf = { workspace = true }
 
 [features]

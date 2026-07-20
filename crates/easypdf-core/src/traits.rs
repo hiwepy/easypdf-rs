@@ -145,3 +145,67 @@ pub trait PdfConverter<T>: Send {
     /// Convert a PDF string representation back to a Rust value.
     fn from_pdf_string(&self, s: &str) -> Result<T>;
 }
+
+// --- PdfEngine (C1) ---
+
+/// Abstract PDF engine interface for backend swapping.
+///
+/// Allows different PDF backends (lopdf, printpdf, justpdf) to be used
+/// interchangeably. Currently experimental — full abstraction awaits
+/// a second mature engine implementation.
+pub trait PdfEngine: Send + Sync {
+    /// Human-readable engine name.
+    fn name(&self) -> &str;
+
+    /// Features supported by this engine.
+    fn capabilities(&self) -> EngineCapabilities;
+}
+
+/// Describes which operations a PDF engine supports.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct EngineCapabilities {
+    /// Can create new PDF documents from scratch.
+    pub create: bool,
+    /// Can read and parse existing PDF documents.
+    pub read: bool,
+    /// Can manipulate (merge, split, rotate) existing PDFs.
+    pub manipulate: bool,
+    /// Can fill form fields in PDF templates.
+    pub fill_forms: bool,
+    /// Supports encryption.
+    pub encrypt: bool,
+    /// Supports digital signatures.
+    pub sign: bool,
+    /// Supports PDF/A validation.
+    pub pdfa: bool,
+}
+
+impl EngineCapabilities {
+    /// lopdf capabilities.
+    #[must_use]
+    pub const fn lopdf() -> Self {
+        Self {
+            create: false,
+            read: true,
+            manipulate: true,
+            fill_forms: true,
+            encrypt: false,
+            sign: false,
+            pdfa: false,
+        }
+    }
+
+    /// printpdf capabilities.
+    #[must_use]
+    pub const fn printpdf() -> Self {
+        Self {
+            create: true,
+            read: false,
+            manipulate: false,
+            fill_forms: false,
+            encrypt: false,
+            sign: false,
+            pdfa: false,
+        }
+    }
+}

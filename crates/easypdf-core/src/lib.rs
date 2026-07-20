@@ -365,4 +365,20 @@ mod tests {
         assert!(xmp.contains("Author Name"));
         assert!(xmp.contains("xmpmeta"));
     }
+
+    #[test]
+    fn test_engine_capabilities_lopdf() {
+        let c = EngineCapabilities::lopdf();
+        assert!(c.read);
+        assert!(c.manipulate);
+        assert!(c.fill_forms);
+        assert!(!c.create);
+    }
+
+    #[test]
+    fn test_engine_capabilities_printpdf() {
+        let c = EngineCapabilities::printpdf();
+        assert!(c.create);
+        assert!(!c.read);
+    }
 }

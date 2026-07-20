@@ -345,6 +345,7 @@ version = "0.1.0"
 dependencies = [
  "easypdf-core",
  "easypdf-derive",
+ "easypdf-layout",
  "easypdf-manipulate",
  "easypdf-reader",
  "easypdf-template",
@@ -371,6 +372,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "easypdf-layout"
+version = "0.1.0"
+dependencies = [
+ "easypdf-core",
+ "easypdf-writer",
 ]
 
 [[package]]

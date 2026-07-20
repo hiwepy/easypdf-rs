@@ -63,6 +63,10 @@ pub use easypdf_manipulate::PdfManipulator;
 // Template
 pub use easypdf_template::PdfTemplateFiller;
 
+// Layout crate (C2)
+pub use easypdf_layout::FlowLayout;
+pub use easypdf_layout::Direction as LayoutDirection;
+
 // --- Builder entry points ---
 
 use std::path::{Path, PathBuf};
@@ -186,6 +190,41 @@ impl EasyPdf {
         d.set("U", lopdf::Object::String(vec![0u8; 32], lopdf::StringFormat::Literal));
         let encrypt_id = doc.add_object(lopdf::Object::Dictionary(d));
         doc.trailer.set("Encrypt", lopdf::Object::Reference(encrypt_id));
+        doc.save(output)?;
+        Ok(())
+    }
+
+    // --- Sign (F13) ---
+
+    /// Add a placeholder digital signature field to a PDF.
+    ///
+    /// Note: Full PKCS#7/RSA digital signatures require the `crypto` feature
+    /// and are not yet implemented. This method adds the signature dictionary
+    /// structure without an actual cryptographic signature.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input file cannot be read or the output cannot be written.
+    pub fn sign(
+        input: impl AsRef<Path>,
+        output: impl AsRef<Path>,
+        reason: &str,
+    ) -> crate::Result<()> {
+        let mut doc = lopdf::Document::load(input).map_err(|e| PdfError::Parse(e.to_string()))?;
+        // Create a signature field (placeholder)
+        let mut sig_dict = lopdf::Dictionary::new();
+        sig_dict.set("Type", lopdf::Object::Name(b"Sig".to_vec()));
+        sig_dict.set("Filter", lopdf::Object::Name(b"Adobe.PPKLite".to_vec()));
+        sig_dict.set("SubFilter", lopdf::Object::Name(b"adbe.pkcs7.detached".to_vec()));
+        sig_dict.set("Reason", lopdf::Object::String(reason.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        sig_dict.set("ByteRange", lopdf::Object::Array(vec![0.into(), 0.into(), 0.into(), 0.into()]));
+        sig_dict.set("Contents", lopdf::Object::String(vec![0u8; 8192], lopdf::StringFormat::Literal));
+        let sig_id = doc.add_object(lopdf::Object::Dictionary(sig_dict));
+        if let Ok(catalog) = doc.catalog_mut() {
+            let mut perm = lopdf::Dictionary::new();
+            perm.set("DocMDP", lopdf::Object::Reference(sig_id));
+            catalog.set("Perms", lopdf::Object::Dictionary(perm));
+        }
         doc.save(output)?;
         Ok(())
     }
@@ -1055,5 +1094,19 @@ mod tests {
         let modify_denied = (flags & 0b1000) == 0; // bit 3 = modify
         assert!(modify_denied || !modify_denied); // just verify flags are set
         let _ = print_allowed;
+    }
+
+    #[test]
+    fn test_sign() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_sign_test.pdf");
+        let mut w = PdfWriter::new("test");
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        w.write_text(&PdfText::new("sig"), 100.0, 700.0).unwrap();
+        w.finish(&path).unwrap();
+        let out = dir.join("easypdf_signed.pdf");
+        assert!(EasyPdf::sign(&path, &out, "Approved").is_ok());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&out);
     }
 }

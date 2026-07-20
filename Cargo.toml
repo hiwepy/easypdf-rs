@@ -4,6 +4,7 @@ members = [
     "crates/easypdf",
     "crates/easypdf-core",
     "crates/easypdf-derive",
+    "crates/easypdf-layout",
     "crates/easypdf-reader",
     "crates/easypdf-writer",
     "crates/easypdf-manipulate",

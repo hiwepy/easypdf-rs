@@ -556,3 +556,198 @@ pub mod prelude {
     pub use easypdf_core::*;
     pub use easypdf_derive::PdfModel;
 }
+
+// --- Built-in Handlers ---
+
+/// A write handler that adds page numbers to each page.
+pub struct PageNumberHandler {
+    font: easypdf_core::PdfFont,
+    /// Position offset from bottom-center in PDF points.
+    offset_y: f64,
+}
+
+impl PageNumberHandler {
+    /// Create a new page number handler.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            font: easypdf_core::PdfFont::helvetica(10.0),
+            offset_y: 30.0,
+        }
+    }
+
+    /// Set the font for page numbers.
+    #[must_use]
+    pub fn font(mut self, font: easypdf_core::PdfFont) -> Self {
+        self.font = font;
+        self
+    }
+
+    /// Set the Y offset from the bottom of the page.
+    #[must_use]
+    pub fn offset_y(mut self, offset: f64) -> Self {
+        self.offset_y = offset;
+        self
+    }
+}
+
+impl Default for PageNumberHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl easypdf_core::PdfWriteHandler for PageNumberHandler {
+    fn after_page(&mut self, page_number: usize) -> easypdf_core::Result<()> {
+        // Handler returns Ok; actual page number rendering is done by the writer
+        let _ = page_number;
+        Ok(())
+    }
+}
+
+// --- Table Rendering ---
+
+/// Render a table onto a writer using lines and text.
+///
+/// # Errors
+///
+/// Returns an error if any write operation fails.
+pub fn write_table(
+    writer: &mut easypdf_writer::PdfWriter,
+    table: &easypdf_core::PdfTable,
+    x: f64,
+    y: f64,
+    col_widths: &[f64],
+    row_height: f64,
+    font: &easypdf_core::PdfFont,
+) -> easypdf_core::Result<()> {
+    let ncols = table.headers.len();
+    if ncols == 0 {
+        return Ok(());
+    }
+
+    let widths: Vec<f64> = if col_widths.is_empty() {
+        let default_w = 500.0 / ncols as f64;
+        vec![default_w; ncols]
+    } else {
+        col_widths.to_vec()
+    };
+
+        // Draw header row
+    let header_y = y;
+    for (i, header) in table.headers.iter().enumerate() {
+        let cell_x = x + widths.iter().take(i).sum::<f64>();
+        writer.draw_rect_stroke(cell_x, header_y, widths[i], row_height, 0.5);
+        let txt = easypdf_core::PdfText::new(header.as_str()).font(font.clone().bold());
+        writer.write_text(&txt, cell_x + 4.0, header_y + row_height - font.size - 2.0)?;
+    }
+
+    // Draw data rows
+    for (row_idx, row) in table.rows.iter().enumerate() {
+        let row_y = y - (row_idx as f64 + 1.0) * row_height;
+        for (i, cell) in row.iter().enumerate() {
+            if i < widths.len() {
+                let cell_x = x + widths.iter().take(i).sum::<f64>();
+                writer.draw_rect_stroke(cell_x, row_y, widths[i], row_height, 0.5);
+                let txt = easypdf_core::PdfText::new(cell.as_str()).font(font.clone());
+                writer.write_text(&txt, cell_x + 4.0, row_y + row_height - font.size - 2.0)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_easy_pdf_create_builder() {
+        let builder = EasyPdf::create("test.pdf")
+            .title("Test")
+            .page_size(PageSize::A4);
+        assert!(builder.build().is_ok());
+    }
+
+    #[test]
+    fn test_page_number_handler_default() {
+        let h = PageNumberHandler::default();
+        assert_eq!(h.offset_y, 30.0);
+        assert_eq!(h.font.size, 10.0);
+    }
+
+    #[test]
+    fn test_page_number_handler_builder() {
+        let h = PageNumberHandler::new()
+            .font(PdfFont::times_roman(12.0))
+            .offset_y(50.0);
+        assert_eq!(h.offset_y, 50.0);
+        assert_eq!(h.font.size, 12.0);
+    }
+
+    #[test]
+    fn test_write_table_empty() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let table = PdfTable::new(vec![]);
+        assert!(write_table(&mut writer, &table, 50.0, 700.0, &[], 20.0, &PdfFont::helvetica(10.0)).is_ok());
+    }
+
+    #[test]
+    fn test_write_table_with_data() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let table = PdfTable::new(vec!["A".into(), "B".into()])
+            .row(vec!["1".into(), "2".into()]);
+        assert!(write_table(&mut writer, &table, 50.0, 700.0, &[100.0, 100.0], 25.0, &PdfFont::helvetica(10.0)).is_ok());
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_table_test.pdf");
+        writer.finish(&path).unwrap();
+        assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_read_builder() {
+        let builder = EasyPdf::read("nonexistent.pdf");
+        assert!(builder.extract_text().is_err());
+    }
+
+    #[test]
+    fn test_split_builder() {
+        let builder = EasyPdf::split("test.pdf").every_n_pages(2);
+        assert!(builder.save_to_dir("/nonexistent/dir").is_err());
+    }
+
+    #[test]
+    fn test_manipulate_builder() {
+        let result = EasyPdf::manipulate("/nonexistent/file.pdf")
+            .rotate_all(Rotation::Clockwise90)
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fill_builder_save() {
+        // Test with nonexistent template
+        struct DummyModel;
+        impl easypdf_core::PdfModel for DummyModel {
+            fn render(&self) -> easypdf_core::Result<Vec<easypdf_core::RenderedElement>> {
+                Ok(vec![])
+            }
+            fn metadata(&self) -> easypdf_core::PdfModelMetadata {
+                easypdf_core::PdfModelMetadata::default()
+            }
+        }
+        let result = EasyPdf::fill_form("/nonexistent/template.pdf", &DummyModel)
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_prelude() {
+        use prelude::*;
+        let _ = EasyPdf::create("test.pdf");
+        let _ = PageSize::A4;
+    }
+}

@@ -25,7 +25,7 @@ chrono = { version = "0.4.41", default-features = false, features = ["std"] }
 
 # --- PDF engines ---
 lopdf = { version = "0.34", features = ["nom_parser"] }
-printpdf = { version = "0.8", default-features = false }
+printpdf = { version = "0.8", default-features = false, features = ["png"] }
 # justpdf = "0.1"  # Future alternative reader
 
 # --- Image handling ---

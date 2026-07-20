@@ -53,6 +53,30 @@ impl PdfMetadata {
         self.keywords = Some(keywords.into());
         self
     }
+
+    /// Generate XMP metadata XML string for PDF/A compatibility.
+    #[must_use]
+    pub fn to_xmp(&self) -> String {
+        let title = self.title.as_deref().unwrap_or("");
+        let author = self.author.as_deref().unwrap_or("");
+        let subject = self.subject.as_deref().unwrap_or("");
+        let keywords = self.keywords.as_deref().unwrap_or("");
+        format!(
+            r#"<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+   <dc:title><rdf:Alt><rdf:li xml:lang="x-default">{title}</rdf:li></rdf:Alt></dc:title>
+   <dc:creator><rdf:Seq><rdf:li>{author}</rdf:li></rdf:Seq></dc:creator>
+   <dc:description><rdf:Alt><rdf:li xml:lang="x-default">{subject}</rdf:li></rdf:Alt></dc:description>
+   <dc:subject><rdf:Bag><rdf:li>{keywords}</rdf:li></rdf:Bag></dc:subject>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>"#
+        )
+    }
 }
 
 /// A single bookmark / outline entry.

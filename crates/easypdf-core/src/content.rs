@@ -1,6 +1,6 @@
 //! Content model types for PDF elements — text, tables, images, and shapes.
 
-use crate::enums::{ImageFormat, TextAlignment, VerticalAlignment};
+use crate::enums::{TextAlignment, VerticalAlignment};
 use crate::style::{PdfColor, PdfFont};
 
 // --- Text ---
@@ -135,14 +135,34 @@ impl Default for PdfTableCell {
 /// An image to be embedded in a PDF.
 #[derive(Debug, Clone)]
 pub struct PdfImage {
-    /// Raw image bytes.
+    /// Raw image bytes (PNG, JPEG, etc. — format auto-detected).
     pub data: Vec<u8>,
-    /// Image format.
-    pub format: ImageFormat,
-    /// Desired width in PDF points (0 = use natural size).
+    /// Desired width in PDF points (0 = use natural size at 72 DPI).
     pub width: f64,
-    /// Desired height in PDF points (0 = use natural size).
+    /// Desired height in PDF points (0 = use natural size at 72 DPI).
     pub height: f64,
+}
+
+impl PdfImage {
+    /// Create an image from raw bytes.
+    #[must_use]
+    pub fn from_bytes(data: Vec<u8>) -> Self {
+        Self {
+            data,
+            width: 0.0,
+            height: 0.0,
+        }
+    }
+
+    /// Create an image from a file path.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PdfError::Io` if the file cannot be read.
+    pub fn from_path(path: impl AsRef<std::path::Path>) -> crate::error::Result<Self> {
+        let data = std::fs::read(path)?;
+        Ok(Self::from_bytes(data))
+    }
 }
 
 // --- Shape ---

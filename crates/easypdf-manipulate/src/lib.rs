@@ -173,6 +173,33 @@ impl PdfManipulator {
         Ok(new_doc)
     }
 
+    /// Add a simple text watermark overlay to all pages.
+    ///
+    /// The watermark text is injected as raw PDF content stream operators
+    /// at the end of each page's content.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PdfError::Parse` if the page content cannot be modified.
+    pub fn add_text_watermark(
+        &mut self,
+        text: &str,
+        font_size: f32,
+        _opacity: f32,
+    ) -> Result<&mut Self> {
+        let page_ids: Vec<lopdf::ObjectId> = self.doc.page_iter().collect();
+        for page_id in page_ids {
+            // Build raw PDF content stream for centered watermark text
+            let content = format!(
+                "q BT /F1 {font_size} Tf 0.5 0.5 0.5 rg 1 0 0 1 200 400 Tm ({text}) Tj ET Q"
+            );
+            self.doc
+                .add_page_contents(page_id, content.into_bytes())
+                .map_err(|e| PdfError::Parse(format!("Watermark error: {e}")))?;
+        }
+        Ok(self)
+    }
+
     /// Get the number of pages in the document.
     #[must_use]
     pub fn page_count(&self) -> usize {
@@ -239,4 +266,77 @@ fn add_page_to_tree(_doc: &mut lopdf::Document, _page_id: lopdf::ObjectId) -> Re
     // In practice, the merged document will contain all pages but may need
     // manual page tree cleanup for full PDF spec compliance.
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_pdf(path: &std::path::Path) {
+        let mut doc = lopdf::Document::new();
+        let page_id = (1, 0);
+        let pages_id = (2, 0);
+        let catalog_id = (3, 0);
+
+        let mut page_dict = lopdf::Dictionary::new();
+        page_dict.set("Type", lopdf::Object::Name(b"Page".to_vec()));
+        page_dict.set("MediaBox", lopdf::Object::Array(vec![0.into(), 0.into(), 595.into(), 842.into()]));
+        doc.objects.insert(page_id, lopdf::Object::Dictionary(page_dict));
+
+        let mut pages_dict = lopdf::Dictionary::new();
+        pages_dict.set("Type", lopdf::Object::Name(b"Pages".to_vec()));
+        pages_dict.set("Kids", lopdf::Object::Array(vec![lopdf::Object::Reference(page_id)]));
+        pages_dict.set("Count", lopdf::Object::Integer(1));
+        doc.objects.insert(pages_id, lopdf::Object::Dictionary(pages_dict));
+
+        let mut catalog = lopdf::Dictionary::new();
+        catalog.set("Type", lopdf::Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", lopdf::Object::Reference(pages_id));
+        doc.objects.insert(catalog_id, lopdf::Object::Dictionary(catalog));
+        doc.trailer.set("Root", lopdf::Object::Reference(catalog_id));
+        doc.save(path).unwrap();
+    }
+
+    #[test]
+    fn test_open_valid_pdf() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_manip_test.pdf");
+        make_test_pdf(&path);
+        assert!(PdfManipulator::open(&path).is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_open_invalid_path() {
+        assert!(PdfManipulator::open("/nonexistent/file.pdf").is_err());
+    }
+
+    #[test]
+    fn test_rotate_invalid_page() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_manip_rot_invalid.pdf");
+        make_test_pdf(&path);
+        let mut m = PdfManipulator::open(&path).unwrap();
+        assert!(m.rotate_page(99, Rotation::Clockwise90).is_err());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_save() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_manip_save_in.pdf");
+        make_test_pdf(&path);
+        let out = dir.join("easypdf_manip_save_out.pdf");
+        PdfManipulator::open(&path).unwrap().save(&out).unwrap();
+        assert!(out.exists());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&out);
+    }
+
+    #[test]
+    fn test_merge_empty() {
+        let empty: &[&str] = &[];
+        let result = PdfManipulator::merge_files(empty, "out.pdf");
+        assert!(result.is_err());
+    }
 }

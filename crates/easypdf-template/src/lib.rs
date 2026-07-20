@@ -104,3 +104,83 @@ impl PdfTemplateFiller {
         self.doc
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_pdf(path: &std::path::Path) {
+        let mut doc = lopdf::Document::new();
+        let page_id = (1, 0);
+        let field_id = (2, 0);
+        let pages_id = (3, 0);
+        let catalog_id = (4, 0);
+
+        // AcroForm field with /T = "test_field"
+        let mut field_dict = lopdf::Dictionary::new();
+        field_dict.set("Type", lopdf::Object::Name(b"Annot".to_vec()));
+        field_dict.set("Subtype", lopdf::Object::Name(b"Widget".to_vec()));
+        field_dict.set("FT", lopdf::Object::Name(b"Tx".to_vec()));
+        field_dict.set("T", lopdf::Object::String(b"test_field".to_vec(), lopdf::StringFormat::Literal));
+        field_dict.set("V", lopdf::Object::String(b"old_value".to_vec(), lopdf::StringFormat::Literal));
+        doc.objects.insert(field_id, lopdf::Object::Dictionary(field_dict));
+
+        // Page
+        let mut page_dict = lopdf::Dictionary::new();
+        page_dict.set("Type", lopdf::Object::Name(b"Page".to_vec()));
+        page_dict.set("MediaBox", lopdf::Object::Array(vec![0.into(), 0.into(), 595.into(), 842.into()]));
+        page_dict.set("Annots", lopdf::Object::Array(vec![lopdf::Object::Reference(field_id)]));
+        doc.objects.insert(page_id, lopdf::Object::Dictionary(page_dict));
+
+        // Pages
+        let mut pages_dict = lopdf::Dictionary::new();
+        pages_dict.set("Type", lopdf::Object::Name(b"Pages".to_vec()));
+        pages_dict.set("Kids", lopdf::Object::Array(vec![lopdf::Object::Reference(page_id)]));
+        pages_dict.set("Count", lopdf::Object::Integer(1));
+        doc.objects.insert(pages_id, lopdf::Object::Dictionary(pages_dict));
+
+        // Catalog
+        let mut catalog = lopdf::Dictionary::new();
+        catalog.set("Type", lopdf::Object::Name(b"Catalog".to_vec()));
+        catalog.set("Pages", lopdf::Object::Reference(pages_id));
+        doc.objects.insert(catalog_id, lopdf::Object::Dictionary(catalog));
+        doc.trailer.set("Root", lopdf::Object::Reference(catalog_id));
+        doc.save(path).unwrap();
+    }
+
+    #[test]
+    fn test_open_valid_pdf() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_tmpl_test.pdf");
+        make_test_pdf(&path);
+        assert!(PdfTemplateFiller::open(&path).is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_open_invalid_path() {
+        assert!(PdfTemplateFiller::open("/nonexistent/file.pdf").is_err());
+    }
+
+    #[test]
+    fn test_fill_nonexistent_field() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_tmpl_nonexist.pdf");
+        make_test_pdf(&path);
+        let mut f = PdfTemplateFiller::open(&path).unwrap();
+        assert!(f.fill_field("not_there", "value").is_err());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_save() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_tmpl_save_in.pdf");
+        make_test_pdf(&path);
+        let out = dir.join("easypdf_tmpl_save_out.pdf");
+        PdfTemplateFiller::open(&path).unwrap().save(&out).unwrap();
+        assert!(out.exists());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&out);
+    }
+}

@@ -729,7 +729,6 @@ mod tests {
 
     #[test]
     fn test_fill_builder_save() {
-        // Test with nonexistent template
         struct DummyModel;
         impl easypdf_core::PdfModel for DummyModel {
             fn render(&self) -> easypdf_core::Result<Vec<easypdf_core::RenderedElement>> {
@@ -745,9 +744,104 @@ mod tests {
     }
 
     #[test]
+    fn test_fill_builder_with_fields() {
+        struct DummyModel;
+        impl easypdf_core::PdfModel for DummyModel {
+            fn render(&self) -> easypdf_core::Result<Vec<easypdf_core::RenderedElement>> {
+                Ok(vec![])
+            }
+            fn metadata(&self) -> easypdf_core::PdfModelMetadata {
+                easypdf_core::PdfModelMetadata::default()
+            }
+        }
+        let result = EasyPdf::fill_form("/nonexistent/template.pdf", &DummyModel)
+            .field("name", "value")
+            .fields([("email", "a@b.com")])
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_builder_metadata() {
+        let result = EasyPdf::read("/nonexistent.pdf").metadata();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_builder_page_count() {
+        let result = EasyPdf::read("/nonexistent.pdf").page_count();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_manipulate_rotate_specific_page() {
+        let result = EasyPdf::manipulate("/nonexistent.pdf")
+            .rotate_page(1, Rotation::Clockwise90)
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_manipulate_reorder() {
+        let result = EasyPdf::manipulate("/nonexistent.pdf")
+            .reorder_pages(&[0])
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_prelude() {
         use prelude::*;
         let _ = EasyPdf::create("test.pdf");
         let _ = PageSize::A4;
+    }
+
+    #[test]
+    fn test_create_builder_do_write_error() {
+        let result = EasyPdf::create("/invalid/path/out.pdf")
+            .do_write();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_create_builder_with_text() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_facade_text.pdf");
+        let result = EasyPdf::create(&path)
+            .add_text("Hi")
+                .font(PdfFont::helvetica(12.0))
+            .do_write();
+        assert!(result.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_create_builder_with_text_position() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_facade_pos.pdf");
+        let result = EasyPdf::create(&path)
+            .add_text("Hi")
+                .font(PdfFont::helvetica(12.0))
+                .position(200.0, 500.0)
+            .do_write();
+        assert!(result.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_read_builder_pages() {
+        let result = EasyPdf::read("/nonexistent.pdf")
+            .pages(0..5)
+            .extract_text();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_manipulate_rotate_all_then_reorder() {
+        let result = EasyPdf::manipulate("/nonexistent.pdf")
+            .rotate_all(Rotation::Clockwise180)
+            .reorder_pages(&[1, 0])
+            .save("/tmp/out.pdf");
+        assert!(result.is_err());
     }
 }

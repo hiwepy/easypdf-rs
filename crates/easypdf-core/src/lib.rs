@@ -31,6 +31,9 @@ mod tests {
     fn test_page_size_dimensions() {
         assert_eq!(PageSize::A4.dimensions(), (595.0, 842.0));
         assert_eq!(PageSize::A0.dimensions(), (2384.0, 3370.0));
+        assert_eq!(PageSize::A1.dimensions(), (1684.0, 2384.0));
+        assert_eq!(PageSize::A2.dimensions(), (1191.0, 1684.0));
+        assert_eq!(PageSize::A3.dimensions(), (842.0, 1191.0));
         assert_eq!(PageSize::Letter.dimensions(), (612.0, 792.0));
         assert_eq!(PageSize::Legal.dimensions(), (612.0, 1008.0));
         assert_eq!(PageSize::A5.dimensions(), (420.0, 595.0));
@@ -93,6 +96,26 @@ mod tests {
         assert_eq!(PdfColor::red(), PdfColor::Rgb(1.0, 0.0, 0.0));
         assert_eq!(PdfColor::green(), PdfColor::Rgb(0.0, 1.0, 0.0));
         assert_eq!(PdfColor::blue(), PdfColor::Rgb(0.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_pdf_color_cmyk() {
+        let c = PdfColor::Cmyk(0.1, 0.2, 0.3, 0.4);
+        if let PdfColor::Cmyk(c1, m, y, k) = c {
+            assert!((c1 - 0.1).abs() < 0.001);
+            assert!((m - 0.2).abs() < 0.001);
+            assert!((y - 0.3).abs() < 0.001);
+            assert!((k - 0.4).abs() < 0.001);
+        } else {
+            panic!("expected Cmyk");
+        }
+    }
+
+    #[test]
+    fn test_pdf_color_gray() {
+        assert_eq!(PdfColor::Gray(0.5), PdfColor::Gray(0.5));
+        assert_eq!(PdfColor::light_gray(), PdfColor::Gray(0.8));
+        assert_eq!(PdfColor::gray(), PdfColor::Gray(0.5));
     }
 
     #[test]
@@ -198,6 +221,35 @@ mod tests {
         assert_eq!(img.data, vec![1, 2, 3]);
         assert_eq!(img.width, 0.0);
         assert_eq!(img.height, 0.0);
+    }
+
+    #[test]
+    fn test_pdf_image_from_path_nonexistent() {
+        let result = PdfImage::from_path("/nonexistent/image.png");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pdf_image_from_path_temp() {
+        use std::io::Write;
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_test_real.png");
+        // Create a minimal PNG
+        let png = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+            0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+            0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+            0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        std::fs::write(&path, &png).unwrap();
+        let result = PdfImage::from_path(&path);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_file(&path);
     }
 
     // --- Metadata ---

@@ -409,6 +409,80 @@ impl PdfWriter {
             .push(Op::DrawLine { line: translated });
     }
 
+    /// Draw a circle outline on the current page using 4 cubic bezier curves.
+    ///
+    /// Center (cx, cy) and radius in PDF points from bottom-left.
+    /// The approximation error is less than 0.027% of the radius.
+    pub fn draw_circle(
+        &mut self,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        line_width: f64,
+    ) {
+        // Magic constant for 4-segment cubic bezier circle approximation
+        const K: f64 = 0.552_284_749_8;
+
+        let r = radius;
+        let k = K * r;
+
+        // 4 segments, each 90 degrees
+        let segments: [(f64, f64, f64, f64, f64, f64, f64, f64); 4] = [
+            // 0°→90°: right to top
+            (r, 0.0, r, k, k, r, 0.0, r),
+            // 90°→180°: top to left
+            (0.0, r, -k, r, -r, k, -r, 0.0),
+            // 180°→270°: left to bottom
+            (-r, 0.0, -r, -k, -k, -r, 0.0, -r),
+            // 270°→360°: bottom to right
+            (0.0, -r, k, -r, r, -k, r, 0.0),
+        ];
+
+        let mut all_points: Vec<LinePoint> = Vec::with_capacity(13); // 4*3 + 1 close
+        for (x1, y1, cx1, cy1, cx2, cy2, x2, y2) in &segments {
+            if all_points.is_empty() {
+                all_points.push(LinePoint {
+                    p: Point {
+                        x: Pt((cx + x1) as f32),
+                        y: Pt((cy + y1) as f32),
+                    },
+                    bezier: false,
+                });
+            }
+            all_points.push(LinePoint {
+                p: Point {
+                    x: Pt((cx + cx1) as f32),
+                    y: Pt((cy + cy1) as f32),
+                },
+                bezier: true,
+            });
+            all_points.push(LinePoint {
+                p: Point {
+                    x: Pt((cx + cx2) as f32),
+                    y: Pt((cy + cy2) as f32),
+                },
+                bezier: true,
+            });
+            all_points.push(LinePoint {
+                p: Point {
+                    x: Pt((cx + x2) as f32),
+                    y: Pt((cy + y2) as f32),
+                },
+                bezier: false,
+            });
+        }
+
+        let line = Line {
+            points: all_points,
+            is_closed: true,
+        };
+
+        self.current_page_ops
+            .push(Op::SetOutlineThickness { pt: Pt(line_width as f32) });
+        self.current_page_ops
+            .push(Op::DrawLine { line });
+    }
+
     /// Write the document to a file and finalize.
     ///
     /// # Errors
@@ -650,6 +724,18 @@ mod tests {
     }
 
     #[test]
+    fn test_draw_circle() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        writer.draw_circle(300.0, 400.0, 100.0, 1.0);
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_test_circle.pdf");
+        writer.finish(&path).unwrap();
+        assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn test_invalid_image_data() {
         let mut writer = PdfWriter::new("test");
         writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
@@ -672,6 +758,46 @@ mod tests {
         let path = dir.join("easypdf_test_svg.pdf");
         writer.finish(&path).unwrap();
         assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_write_svg_invalid() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let result = writer.write_svg("not valid svg", 100.0, 600.0, 100.0, 100.0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_custom_font_not_registered() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let result = writer.write_text_with_custom_font("hello", "nonexistent", 12.0, 100.0, 700.0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_register_font_from_nonexistent_path() {
+        let mut writer = PdfWriter::new("test");
+        let result = writer.register_font_from_path("/nonexistent/font.ttf");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_write_text_with_symbol_font() {
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let font = PdfFont {
+            family: FontFamily::BuiltIn(BuiltInFont::Symbol),
+            size: 12.0,
+            style: Default::default(),
+        };
+        let text = PdfText::new("test").font(font);
+        writer.write_text(&text, 100.0, 700.0).unwrap();
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_test_symbol.pdf");
+        writer.finish(&path).unwrap();
         let _ = std::fs::remove_file(&path);
     }
 

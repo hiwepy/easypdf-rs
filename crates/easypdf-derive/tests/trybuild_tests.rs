@@ -9,7 +9,7 @@
 //! at compile time. This is tracked as a future improvement.
 
 #[test]
-#[ignore = "requires proc-macro-crate name resolution fix in implementation.rs"]
+#[ignore = "trybuild standalone compilation can't resolve proc-macro-crate dependencies"]
 fn test_derive_trybuild() {
     let t = trybuild::TestCases::new();
     t.pass("tests/trybuild/01-basic-text.rs");

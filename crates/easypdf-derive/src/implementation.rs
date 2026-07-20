@@ -4,31 +4,47 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Error, Result};
 
+/// Resolve the `easypdf_core` crate name at compile time.
+fn core_crate() -> TokenStream {
+    let name = match proc_macro_crate::crate_name("easypdf-core")
+        .or_else(|_| proc_macro_crate::crate_name("easypdf_core"))
+    {
+        Ok(found) => match found {
+            proc_macro_crate::FoundCrate::Name(n) => n,
+            proc_macro_crate::FoundCrate::Itself => "easypdf_core".to_string(),
+        },
+        Err(_) => "easypdf_core".to_string(),
+    };
+    let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
+    quote! { #ident }
+}
+
 /// Entry point: expands `#[derive(PdfModel)]` into the trait implementation.
 pub(crate) fn expand_pdf_model(input: TokenStream) -> Result<TokenStream> {
     let input: DeriveInput = syn::parse2(input)?;
     let name = &input.ident;
+    let core = core_crate();
 
     // Parse struct-level #[pdf(...)] attributes
     let PdfStructAttrs {
         page_size,
         orientation,
         margins,
-    } = parse_struct_attrs(&input.attrs)?;
+    } = parse_struct_attrs(&input.attrs, &core)?;
 
     // Generate field rendering code
-    let render_arms = generate_render_arms(&input)?;
+    let render_arms = generate_render_arms(&input, &core)?;
 
     let expanded = quote! {
-        impl easypdf_core::PdfModel for #name {
-            fn render(&self) -> easypdf_core::Result<Vec<easypdf_core::RenderedElement>> {
+        impl #core::PdfModel for #name {
+            fn render(&self) -> #core::Result<Vec<#core::RenderedElement>> {
                 let mut elements = Vec::new();
                 #render_arms
                 Ok(elements)
             }
 
-            fn metadata(&self) -> easypdf_core::PdfModelMetadata {
-                easypdf_core::PdfModelMetadata {
+            fn metadata(&self) -> #core::PdfModelMetadata {
+                #core::PdfModelMetadata {
                     page_size: #page_size,
                     orientation: #orientation,
                     margins: #margins,
@@ -46,9 +62,9 @@ struct PdfStructAttrs {
     margins: TokenStream,
 }
 
-fn parse_struct_attrs(attrs: &[syn::Attribute]) -> Result<PdfStructAttrs> {
-    let mut page_size = quote! { easypdf_core::PageSize::A4 };
-    let mut orientation = quote! { easypdf_core::Orientation::Portrait };
+fn parse_struct_attrs(attrs: &[syn::Attribute], core: &TokenStream) -> Result<PdfStructAttrs> {
+    let mut page_size = quote! { #core::PageSize::A4 };
+    let mut orientation = quote! { #core::Orientation::Portrait };
     let mut margins = quote! { 72.0_f64 };
 
     for attr in attrs {
@@ -78,7 +94,7 @@ fn parse_struct_attrs(attrs: &[syn::Attribute]) -> Result<PdfStructAttrs> {
     })
 }
 
-fn generate_render_arms(input: &DeriveInput) -> Result<TokenStream> {
+fn generate_render_arms(input: &DeriveInput, core: &TokenStream) -> Result<TokenStream> {
     let fields = match &input.data {
         syn::Data::Struct(s) => &s.fields,
         _ => return Err(Error::new_spanned(input, "PdfModel only supports structs")),
@@ -103,12 +119,12 @@ fn generate_render_arms(input: &DeriveInput) -> Result<TokenStream> {
         // Check for #[pdf(text, position = (x, y), ...)]
         if has_pdf_attr(&field.attrs, "text") {
             let (x, y) = parse_position(field)?;
-            let text_attrs = parse_text_attrs(field)?;
+            let text_attrs = parse_text_attrs(field, core)?;
             arms.extend(quote! {
-                elements.push(easypdf_core::RenderedElement::Text {
+                elements.push(#core::RenderedElement::Text {
                     x: #x,
                     y: #y,
-                    text: easypdf_core::PdfText::new(self.#field_name.clone())
+                    text: #core::PdfText::new(self.#field_name.clone())
                         #text_attrs,
                 });
             });
@@ -119,7 +135,7 @@ fn generate_render_arms(input: &DeriveInput) -> Result<TokenStream> {
         if has_pdf_attr(&field.attrs, "table") {
             let (x, y) = parse_position(field)?;
             arms.extend(quote! {
-                elements.push(easypdf_core::RenderedElement::Table {
+                elements.push(#core::RenderedElement::Table {
                     x: #x,
                     y: #y,
                     table: self.#field_name.clone(),
@@ -132,7 +148,7 @@ fn generate_render_arms(input: &DeriveInput) -> Result<TokenStream> {
         if has_pdf_attr(&field.attrs, "image") {
             let (x, y) = parse_position(field)?;
             arms.extend(quote! {
-                elements.push(easypdf_core::RenderedElement::Image {
+                elements.push(#core::RenderedElement::Image {
                     x: #x,
                     y: #y,
                     image: self.#field_name.clone(),
@@ -191,7 +207,7 @@ fn parse_position(field: &syn::Field) -> Result<(TokenStream, TokenStream)> {
 }
 
 /// Parse text-specific attributes: font, color, alignment.
-fn parse_text_attrs(field: &syn::Field) -> Result<TokenStream> {
+fn parse_text_attrs(field: &syn::Field, core: &TokenStream) -> Result<TokenStream> {
     let mut attrs = TokenStream::new();
 
     for attr in &field.attrs {
@@ -204,7 +220,7 @@ fn parse_text_attrs(field: &syn::Field) -> Result<TokenStream> {
                 attrs.extend(quote! { .font(#value) });
             } else if meta.path.is_ident("size") {
                 let value: syn::Expr = meta.value()?.parse()?;
-                attrs.extend(quote! { .font(easypdf_core::PdfFont::helvetica(#value as f64)) });
+                attrs.extend(quote! { .font(#core::PdfFont::helvetica(#value as f64)) });
             }
             Ok(())
         })?;

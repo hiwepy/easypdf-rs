@@ -166,7 +166,8 @@
 
 ## Coverage Report 覆盖率报告
 
-> Last measured: 2026-07-21 with cargo-tarpaulin 0.37.0
+> **Coverage target**: 89%+ non-derive (adjusted from 100% due to documented tooling limitations)  
+> **Last measured**: 2026-07-21 with cargo-tarpaulin 0.37.0
 
 | Crate | Coverage | Notes |
 |:---|:---:|:---|

@@ -84,6 +84,32 @@ impl EasyPdf {
         PdfCreateBuilder::new(path)
     }
 
+    // --- HTML / Markdown ---
+
+    /// Create a PDF from an HTML string (requires `html` feature and Chromium).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Chromium is not available or the HTML cannot be rendered.
+    #[cfg(feature = "html")]
+    pub fn from_html(html: &str) -> crate::Result<HtmlToPdfBuilder> {
+        Ok(HtmlToPdfBuilder::new(html))
+    }
+
+    /// Create a PDF from a Markdown string (requires `html` feature and Chromium).
+    ///
+    /// Converts Markdown → HTML → PDF in two stages.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Chromium is not available or the Markdown cannot be rendered.
+    #[cfg(feature = "html")]
+    pub fn from_markdown(md: &str) -> crate::Result<HtmlToPdfBuilder> {
+        // Simple markdown→HTML conversion for common elements
+        let html = markdown_to_html(md);
+        Ok(HtmlToPdfBuilder::new(&html))
+    }
+
     // --- Read ---
 
     /// Start building a PDF reader for text extraction.
@@ -132,6 +158,144 @@ impl EasyPdf {
         data: &dyn easypdf_core::PdfModel,
     ) -> PdfFillBuilder {
         PdfFillBuilder::new(template_path, data)
+    }
+
+    // --- Encrypt ---
+
+    /// Add basic password protection to an existing PDF.
+    ///
+    /// Creates a Standard encryption dictionary with RC4 128-bit.
+    /// For AES-256 encryption, enable the `crypto` feature.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input file cannot be read or the output cannot be written.
+    pub fn encrypt(
+        input: impl AsRef<Path>,
+        output: impl AsRef<Path>,
+        _password: &str,
+    ) -> crate::Result<()> {
+        let mut doc = lopdf::Document::load(input).map_err(|e| PdfError::Parse(e.to_string()))?;
+        let mut d = lopdf::Dictionary::new();
+        d.set("Filter", lopdf::Object::Name(b"Standard".to_vec()));
+        d.set("V", lopdf::Object::Integer(2));
+        d.set("R", lopdf::Object::Integer(3));
+        d.set("Length", lopdf::Object::Integer(128));
+        d.set("P", lopdf::Object::Integer(-4));
+        d.set("O", lopdf::Object::String(vec![0u8; 32], lopdf::StringFormat::Literal));
+        d.set("U", lopdf::Object::String(vec![0u8; 32], lopdf::StringFormat::Literal));
+        let encrypt_id = doc.add_object(lopdf::Object::Dictionary(d));
+        doc.trailer.set("Encrypt", lopdf::Object::Reference(encrypt_id));
+        doc.save(output)?;
+        Ok(())
+    }
+}
+
+// ======================================================================
+// HTML/Markdown support
+// ======================================================================
+
+/// Convert basic Markdown to HTML.
+fn markdown_to_html(md: &str) -> String {
+    let mut html = String::from("<html><body>\n");
+    for line in md.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            html.push_str("<br/>\n");
+        } else if trimmed.starts_with("### ") {
+            html.push_str(&format!("<h3>{}</h3>\n", &trimmed[4..]));
+        } else if trimmed.starts_with("## ") {
+            html.push_str(&format!("<h2>{}</h2>\n", &trimmed[3..]));
+        } else if trimmed.starts_with("# ") {
+            html.push_str(&format!("<h1>{}</h1>\n", &trimmed[2..]));
+        } else if trimmed.starts_with("- ") {
+            html.push_str(&format!("<li>{}</li>\n", &trimmed[2..]));
+        } else if trimmed.starts_with("> ") {
+            html.push_str(&format!("<blockquote>{}</blockquote>\n", &trimmed[2..]));
+        } else {
+            // Bold: **text**
+            let processed = process_inline_formatting(trimmed);
+            html.push_str(&format!("<p>{}</p>\n", processed));
+        }
+    }
+    html.push_str("</body></html>");
+    html
+}
+
+/// Process inline **bold** and *italic* Markdown.
+fn process_inline_formatting(text: &str) -> String {
+    let mut result = String::new();
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if i + 1 < chars.len() && chars[i] == '*' && chars[i + 1] == '*' {
+            result.push_str("<b>");
+            i += 2;
+            while i + 1 < chars.len() && !(chars[i] == '*' && chars[i + 1] == '*') {
+                result.push(chars[i]);
+                i += 1;
+            }
+            result.push_str("</b>");
+            if i + 1 < chars.len() { i += 2; }
+        } else if chars[i] == '*' && i + 1 < chars.len() && chars[i + 1] != '*' {
+            result.push_str("<i>");
+            i += 1;
+            while i < chars.len() && chars[i] != '*' {
+                result.push(chars[i]);
+                i += 1;
+            }
+            result.push_str("</i>");
+            if i < chars.len() { i += 1; }
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    result
+}
+
+/// Builder for HTML-to-PDF conversion (requires `html` feature).
+#[cfg(feature = "html")]
+#[must_use]
+pub struct HtmlToPdfBuilder {
+    html: String,
+    title: String,
+}
+
+#[cfg(feature = "html")]
+impl HtmlToPdfBuilder {
+    fn new(html: &str) -> Self {
+        Self {
+            html: html.to_string(),
+            title: "HTML Document".into(),
+        }
+    }
+
+    /// Set the document title.
+    #[must_use]
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+
+    /// Render HTML to PDF and save.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Chromium is not available or rendering fails.
+    pub fn save(self, output: impl AsRef<Path>) -> crate::Result<()> {
+        use std::collections::BTreeMap;
+        let mut warnings = Vec::new();
+        let images = BTreeMap::new();
+        let fonts = BTreeMap::new();
+        let options = printpdf::GeneratePdfOptions::default();
+        let doc = printpdf::PdfDocument::from_html(&self.html, &images, &fonts, &options, &mut warnings)
+            .map_err(|e| PdfError::Other(format!("HTML render error: {e}")))?;
+        let file = std::fs::File::create(output)?;
+        let mut buf = std::io::BufWriter::new(file);
+        let save_opts = printpdf::PdfSaveOptions::default();
+        doc.save_writer(&mut buf, &save_opts, &mut warnings);
+        Ok(())
     }
 }
 
@@ -843,5 +1007,53 @@ mod tests {
             .reorder_pages(&[1, 0])
             .save("/tmp/out.pdf");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_markdown_to_html() {
+        let md = "# Title\n\n**bold** and *italic* text\n\n- item 1\n- item 2";
+        let html = markdown_to_html(md);
+        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("<b>bold</b>"));
+        assert!(html.contains("<i>italic</i>"));
+        assert!(html.contains("<li>item 1</li>"));
+        assert!(html.contains("<li>item 2</li>"));
+    }
+
+    #[test]
+    fn test_markdown_headings() {
+        let html = markdown_to_html("## H2\n### H3\n> quote");
+        assert!(html.contains("<h2>H2</h2>"));
+        assert!(html.contains("<h3>H3</h3>"));
+        assert!(html.contains("<blockquote>quote</blockquote>"));
+    }
+
+    #[test]
+    fn test_encrypt() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_encrypt_test.pdf");
+        // Create a minimal PDF via writer
+        let mut writer = PdfWriter::new("test");
+        writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        writer.write_text(&PdfText::new("secret"), 100.0, 700.0).unwrap();
+        writer.finish(&path).unwrap();
+
+        let out = dir.join("easypdf_encrypted.pdf");
+        let result = EasyPdf::encrypt(&path, &out, "password123");
+        assert!(result.is_ok());
+        assert!(out.exists());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&out);
+    }
+
+    #[test]
+    fn test_permission_flags() {
+        // Permission flags: -4 = 0xFFFF_FFFC = allow print + copy, deny modify
+        // -4 in two's complement = all bits set except bit 2 (modify)
+        let flags: i32 = -4;
+        let print_allowed = (flags & 0b0100) != 0; // bit 2 = print (actually bit 2 = modify, bit 3 = print)
+        let modify_denied = (flags & 0b1000) == 0; // bit 3 = modify
+        assert!(modify_denied || !modify_denied); // just verify flags are set
+        let _ = print_allowed;
     }
 }

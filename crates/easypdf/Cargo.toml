@@ -15,6 +15,16 @@ easypdf-reader = { path = "../easypdf-reader" }
 easypdf-writer = { path = "../easypdf-writer" }
 easypdf-manipulate = { path = "../easypdf-manipulate" }
 easypdf-template = { path = "../easypdf-template" }
+lopdf = { workspace = true }
+
+[features]
+default = []
+html = ["printpdf"]
+crypto = []
+
+[dependencies.printpdf]
+workspace = true
+optional = true
 
 [dev-dependencies]
 tempfile.workspace = true

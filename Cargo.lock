@@ -349,6 +349,8 @@ dependencies = [
  "easypdf-reader",
  "easypdf-template",
  "easypdf-writer",
+ "lopdf 0.34.0",
+ "printpdf",
  "tempfile",
 ]
 

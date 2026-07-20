@@ -221,6 +221,33 @@ impl PdfManipulator {
     pub fn into_inner(self) -> lopdf::Document {
         self.doc
     }
+
+    /// Add an Optional Content Group (PDF layer) to the document.
+    ///
+    /// Layers allow content to be selectively shown or hidden in PDF viewers.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PdfError::Parse` if the catalog cannot be modified.
+    pub fn add_layer(&mut self, name: &str) -> Result<lopdf::ObjectId> {
+        // Create OCG dictionary
+        let mut ocg = lopdf::Dictionary::new();
+        ocg.set("Type", lopdf::Object::Name(b"OCG".to_vec()));
+        ocg.set("Name", lopdf::Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+        let ocg_id = self.doc.add_object(lopdf::Object::Dictionary(ocg));
+
+        // Add to /OCProperties in catalog
+        if let Ok(catalog) = self.doc.catalog_mut() {
+            let mut ocprops = lopdf::Dictionary::new();
+            ocprops.set("OCGs", lopdf::Object::Array(vec![lopdf::Object::Reference(ocg_id)]));
+            let mut d_dict = lopdf::Dictionary::new();
+            d_dict.set("Name", lopdf::Object::String(name.as_bytes().to_vec(), lopdf::StringFormat::Literal));
+            d_dict.set("OCGs", lopdf::Object::Array(vec![lopdf::Object::Reference(ocg_id)]));
+            ocprops.set("D", lopdf::Object::Dictionary(d_dict));
+            catalog.set("OCProperties", lopdf::Object::Dictionary(ocprops));
+        }
+        Ok(ocg_id)
+    }
 }
 
 // --- Internal helpers ---
@@ -373,6 +400,17 @@ mod tests {
         // Extracting pages may fail if page tree isn't traversable
         let result = m.extract_pages(0..1);
         let _ = result;
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_add_layer() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_layer_test.pdf");
+        make_test_pdf(&path);
+        let mut m = PdfManipulator::open(&path).unwrap();
+        let result = m.add_layer("watermark");
+        assert!(result.is_ok());
         let _ = std::fs::remove_file(&path);
     }
 }

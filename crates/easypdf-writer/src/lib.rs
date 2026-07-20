@@ -880,4 +880,20 @@ mod tests {
         let f = PdfFont { family: FontFamily::Custom("x.ttf".into()), size: 12.0, style: FontStyle { bold: true, italic: false } };
         w.write_text(&PdfText::new("x").font(f), 100.0, 700.0).unwrap();
     }
+
+    #[test]
+    fn test_register_handler_direct() {
+        struct TestH;
+        impl PdfWriteHandler for TestH {}
+        let w = PdfWriter::new("test").register_handler(Box::new(TestH));
+        // Just verify the builder accepts handlers
+        let _ = w;
+    }
+
+    #[test]
+    fn test_register_font_from_bytes_error() {
+        let mut w = PdfWriter::new("test");
+        let r = w.register_font_from_bytes("bad", &[0, 1, 2]);
+        assert!(r.is_err()); // invalid font data
+    }
 }

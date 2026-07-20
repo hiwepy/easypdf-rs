@@ -1111,4 +1111,9 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&out);
     }
+
+    #[test]
+    fn test_encrypt_error_nonexistent_input() {
+        assert!(EasyPdf::encrypt("/nonexistent/in.pdf", "/tmp/out.pdf", "pwd").is_err());
+    }
 }

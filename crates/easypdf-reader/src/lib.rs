@@ -325,4 +325,35 @@ mod tests {
         assert!(PdfReader::open(&path).is_err());
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn test_extract_text_with_content() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("reader_txt.pdf");
+        let mut doc = lopdf::Document::new();
+        let c = doc.add_object(lopdf::Object::Stream(lopdf::Stream::new(lopdf::Dictionary::new(), b"BT /F1 12 Tf 72 700 Td (Hello PDF) Tj ET".to_vec())));
+        let mut p = lopdf::Dictionary::new();
+        p.set("Type", lopdf::Object::Name(b"Page".to_vec()));
+        p.set("MediaBox", lopdf::Object::Array(vec![0.into(), 0.into(), 595.into(), 842.into()]));
+        p.set("Contents", lopdf::Object::Reference(c));
+        let pid = doc.add_object(lopdf::Object::Dictionary(p));
+        let mut pages = lopdf::Dictionary::new();
+        pages.set("Type", lopdf::Object::Name(b"Pages".to_vec()));
+        pages.set("Kids", lopdf::Object::Array(vec![lopdf::Object::Reference(pid)]));
+        pages.set("Count", lopdf::Object::Integer(1));
+        let pgid = doc.add_object(lopdf::Object::Dictionary(pages));
+        let mut cat = lopdf::Dictionary::new();
+        cat.set("Type", lopdf::Object::Name(b"Catalog".to_vec()));
+        cat.set("Pages", lopdf::Object::Reference(pgid));
+        let cid = doc.add_object(lopdf::Object::Dictionary(cat));
+        doc.trailer.set("Root", lopdf::Object::Reference(cid));
+        doc.save(&path).unwrap();
+        let reader = PdfReader::open(&path).unwrap();
+        let text = reader.extract_text().unwrap();
+        // Text extraction depends on font encoding; just verify no error
+        let _ = text;
+        let meta = reader.extract_metadata().unwrap();
+        let _ = meta;
+        let _ = std::fs::remove_file(&path);
+    }
 }

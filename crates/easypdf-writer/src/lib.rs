@@ -787,23 +787,15 @@ mod tests {
     #[test]
     fn test_register_font_success() {
         let mut writer = PdfWriter::new("test");
-        // Try common system font paths
-        let paths = [
-            "/System/Library/Fonts/Helvetica.ttc",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        let mut registered = false;
-        for p in &paths {
-            if std::path::Path::new(p).exists() {
-                let result = writer.register_font_from_path(p);
-                if result.is_ok() {
-                    registered = true;
-                    break;
-                }
-            }
+        let path = "/System/Library/Fonts/Helvetica.ttc";
+        if std::path::Path::new(path).exists() {
+            let result = writer.register_font_from_path(path);
+            assert!(result.is_ok());
+            // Also test writing with the registered font
+            writer.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+            let r = writer.write_text_with_custom_font("CustomFont!", path, 14.0, 100.0, 600.0);
+            assert!(r.is_ok());
         }
-        // At least verify the method doesn't panic; may or may not find fonts
-        let _ = registered;
     }
 
     #[test]

@@ -449,4 +449,12 @@ mod tests {
         assert!(!issues.is_empty() || issues.is_empty()); // just verify no panic
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn test_clone_object_into() {
+        let mut dest = lopdf::Document::new();
+        let obj = lopdf::Object::Integer(42);
+        let result = clone_object_into(&lopdf::Document::new(), &mut dest, &obj);
+        assert!(result.is_ok());
+    }
 }

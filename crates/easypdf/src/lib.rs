@@ -235,6 +235,7 @@ impl EasyPdf {
 // ======================================================================
 
 /// Convert basic Markdown to HTML.
+#[cfg(any(test, feature = "html"))]
 fn markdown_to_html(md: &str) -> String {
     let mut html = String::from("<html><body>\n");
     for line in md.lines() {
@@ -262,6 +263,7 @@ fn markdown_to_html(md: &str) -> String {
 }
 
 /// Process inline **bold** and *italic* Markdown.
+#[cfg(any(test, feature = "html"))]
 fn process_inline_formatting(text: &str) -> String {
     let mut result = String::new();
     let chars: Vec<char> = text.chars().collect();

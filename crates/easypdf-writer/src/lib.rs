@@ -15,8 +15,8 @@
 
 use easypdf_core::error::{PdfError, Result};
 use easypdf_core::{
-    BuiltInFont, FontFamily, Orientation, PageSize, PdfFont, PdfImage, PdfMetadata, PdfText,
-    PdfWriteHandler,
+    BuiltInFont, FontFamily, FontStyle, Orientation, PageSize, PdfFont, PdfImage, PdfMetadata,
+    PdfText, PdfWriteHandler,
 };
 use printpdf::{
     BuiltinFont, Line, LinePoint, Mm, Op, PdfDocument, PdfPage, PdfSaveOptions, Point, Pt,
@@ -849,5 +849,35 @@ mod tests {
         assert_eq!(letter, (612.0, 792.0));
         let custom = PageSize::Custom(100.0, 200.0).dimensions();
         assert_eq!(custom, (100.0, 200.0));
+    }
+
+    #[test]
+    fn test_all_builtin_fonts() {
+        for font in &[BuiltInFont::TimesBoldItalic, BuiltInFont::CourierBold, BuiltInFont::CourierOblique,
+                       BuiltInFont::HelveticaBoldOblique, BuiltInFont::TimesBold, BuiltInFont::TimesItalic,
+                       BuiltInFont::CourierBoldOblique, BuiltInFont::ZapfDingbats] {
+            let mut w = PdfWriter::new("test");
+            w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+            let f = PdfFont { family: FontFamily::BuiltIn(*font), size: 10.0, style: Default::default() };
+            w.write_text(&PdfText::new("x").font(f), 100.0, 700.0).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_empty_finish() {
+        let mut w = PdfWriter::new("empty");
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let dir = std::env::temp_dir();
+        let p = dir.join("easypdf_empty.pdf");
+        w.finish(&p).unwrap();
+        let _ = std::fs::remove_file(&p);
+    }
+
+    #[test]
+    fn test_custom_font_fallback_bold() {
+        let mut w = PdfWriter::new("test");
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let f = PdfFont { family: FontFamily::Custom("x.ttf".into()), size: 12.0, style: FontStyle { bold: true, italic: false } };
+        w.write_text(&PdfText::new("x").font(f), 100.0, 700.0).unwrap();
     }
 }

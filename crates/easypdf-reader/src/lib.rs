@@ -316,4 +316,13 @@ mod tests {
         assert!(meta.author.is_none() || meta.author.is_some());
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn test_corrupt_pdf_data() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_corrupt.pdf");
+        std::fs::write(&path, b"%PDF-1.4\n% corrupted\n%%EOF").unwrap();
+        assert!(PdfReader::open(&path).is_err());
+        let _ = std::fs::remove_file(&path);
+    }
 }

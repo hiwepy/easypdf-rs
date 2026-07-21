@@ -7,6 +7,15 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance)
+[![tests](https://img.shields.io/badge/tests-137%20passed-green.svg)]()
+[![coverage](https://img.shields.io/badge/coverage-89%25%20non--derive-blue.svg)]()
+
+---
+
+`easypdf-rs` provides a fluent, type-safe builder API for all common PDF tasks:  
+**creation**, **reading & extraction**, **merge / split / rotate**, and **template / form filling**.
+
+📖 **[Usage Guide 使用指南 →](docs/usage-guide.md)**  |  🏗️ **[Architecture 架构 →](docs/architecture.md)**  |  ✅ **[Compatibility 兼容性 →](docs/compatibility.md)**
 
 ---
 
@@ -420,6 +429,15 @@ pub type Result<T, E = PdfError> = std::result::Result<T, E>;
 Apache-2.0
 
 ---
+
+## Documentation  |  文档
+
+| Document | 说明 | Description |
+|:---|:---|:---|
+| [Usage Guide](docs/usage-guide.md) | 完整 API 使用指南，含 12 章节代码示例 | Complete usage guide with 12 chapters of examples |
+| [Architecture](docs/architecture.md) | 架构设计文档，含数据流、类型层级、设计模式 | Architecture design with data flows, type hierarchy, patterns |
+| [Compatibility](docs/compatibility.md) | 功能兼容性矩阵 + 覆盖率报告 | Feature matrix + coverage report |
+| [Implementation Plan](docs/implementation-plan.md) | 未实现功能的实施规划 | Implementation plan for planned features |
 
 ## Related Projects  |  相关项目
 

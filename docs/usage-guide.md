@@ -109,7 +109,39 @@ EasyPdf::create("output.pdf")
     .do_write()?;
 ```
 
-### 3.2 多页创建
+### 3.2 Auto-positioned Text (hutool OfdWriter pattern) 
+
+使用 `add_text` 自动定位，无需手动指定坐标：
+
+```rust
+let mut writer = EasyPdf::create("auto-layout.pdf").build()?;
+writer.add_page(PageSize::A4, Orientation::Portrait)?;
+
+// 自动堆叠文本，每行自动向下移动
+writer
+    .add_text(&PdfFont::helvetica(18.0).bold(), "Chapter 1")?
+    .add_text(&PdfFont::times_roman(12.0), "This is the first paragraph.")?
+    .add_text(&PdfFont::times_roman(12.0), "This is another line.")?
+    .add_text_colored(&PdfFont::helvetica(14.0), &PdfColor::blue(), "Blue heading!")?;
+
+// 添加图片（也自动推进光标）
+writer.add_image_from_path("logo.png", 200.0, 100.0)?;
+
+writer.finish("auto-layout.pdf")?;
+```
+
+### 3.3 Stream-based Output (hutool OfdWriter pattern)
+
+```rust
+let mut buf = Vec::new();
+let mut writer = PdfWriter::new_from_writer(buf);
+writer.add_page(PageSize::A4, Orientation::Portrait)?;
+writer.add_text(&PdfFont::helvetica(12.0), "Hello stream!")?;
+writer.flush()?; // writes PDF bytes to buffer
+// Now `buf` contains the PDF data
+```
+
+### 3.4 Multi-page Writer
 
 使用 `PdfWriter` 进行多页写入：
 

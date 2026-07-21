@@ -15,8 +15,8 @@
 
 use easypdf_core::error::{PdfError, Result};
 use easypdf_core::{
-    BuiltInFont, FontFamily, FontStyle, Orientation, PageSize, PdfFont, PdfImage, PdfMetadata,
-    PdfText, PdfWriteHandler,
+    BuiltInFont, FontFamily, FontStyle, Orientation, PageSize, PdfColor, PdfFont, PdfImage,
+    PdfMetadata, PdfText, PdfWriteHandler,
 };
 use printpdf::{
     BuiltinFont, Line, LinePoint, Mm, Op, PdfDocument, PdfPage, PdfSaveOptions, Point, Pt,
@@ -24,16 +24,20 @@ use printpdf::{
 };
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 /// PDF measurement units.
 const PT_TO_MM: f64 = 25.4 / 72.0;
+/// Default margin in points.
+const DEFAULT_MARGIN: f64 = 72.0;
 
 /// A writer for creating new PDF documents.
 ///
 /// Builds pages from operations, then serializes the document to bytes.
 /// Supports multiple pages, images, custom fonts, and shapes.
+///
+/// Inspired by hutool's OfdWriter and ExcelWriter patterns.
 pub struct PdfWriter {
     doc: PdfDocument,
     /// Accumulated completed pages.
@@ -50,10 +54,14 @@ pub struct PdfWriter {
     metadata: PdfMetadata,
     /// Lifecycle handlers.
     handlers: Vec<Box<dyn PdfWriteHandler>>,
+    /// Auto-cursor for add_text convenience (hutool OfdWriter pattern).
+    text_cursor: (f64, f64),
+    /// Output stream for flush-based writing.
+    output: Option<Box<dyn Write>>,
 }
 
 impl PdfWriter {
-    /// Create a new PDF document.
+    /// Create a new PDF document (writes to file later via `finish`).
     #[must_use]
     pub fn new(title: &str) -> Self {
         Self {
@@ -65,7 +73,20 @@ impl PdfWriter {
             custom_fonts: HashMap::new(),
             metadata: PdfMetadata::default(),
             handlers: Vec::new(),
+            text_cursor: (DEFAULT_MARGIN, 0.0),
+            output: None,
         }
+    }
+
+    /// Create a new PDF document that writes to a generic writer.
+    ///
+    /// Inspired by hutool's `OfdWriter(OutputStream out)` constructor.
+    /// Use `flush()` to finalize the document.
+    #[must_use]
+    pub fn new_from_writer(writer: impl Write + 'static) -> Self {
+        let mut s = Self::new("untitled");
+        s.output = Some(Box::new(writer));
+        s
     }
 
     /// Set document metadata.
@@ -168,6 +189,7 @@ impl PdfWriter {
 
         self.current_page_number += 1;
         self.current_page_size = size.dimensions();
+        self.text_cursor = (DEFAULT_MARGIN, self.current_page_size.1 - DEFAULT_MARGIN);
         let _ = orientation;
 
         for handler in &mut self.handlers {
@@ -175,6 +197,99 @@ impl PdfWriter {
             handler.after_page(self.current_page_number)?;
         }
         Ok(self.current_page_number)
+    }
+
+    /// Add auto-positioned text with font (hutool OfdWriter::addText pattern).
+    ///
+    /// The cursor advances downward by `font.size` after each call.
+    /// Call `add_page()` to reset the cursor.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write operation fails.
+    pub fn add_text(&mut self, font: &PdfFont, text: &str) -> Result<&mut Self> {
+        let (x, y) = self.text_cursor;
+        self.write_text(&PdfText::new(text).font(font.clone()), x, y)?;
+        self.text_cursor.1 -= font.size + 4.0; // advance downward
+        Ok(self)
+    }
+
+    /// Add auto-positioned text with font and explicit color.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write operation fails.
+    pub fn add_text_colored(
+        &mut self,
+        font: &PdfFont,
+        color: &PdfColor,
+        text: &str,
+    ) -> Result<&mut Self> {
+        let (x, y) = self.text_cursor;
+        self.write_text(
+            &PdfText::new(text).font(font.clone()).color(*color),
+            x,
+            y,
+        )?;
+        self.text_cursor.1 -= font.size + 4.0;
+        Ok(self)
+    }
+
+    /// Add an image from a file path with given dimensions (hutool addPicture pattern).
+    ///
+    /// If width and height are both 0, the image's natural pixel size is used at 72 DPI.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read or the image cannot be decoded.
+    pub fn add_image_from_path(
+        &mut self,
+        path: impl AsRef<Path>,
+        width_pt: f64,
+        height_pt: f64,
+    ) -> Result<&mut Self> {
+        let img = PdfImage::from_path(path)?;
+        let (x, y) = self.text_cursor;
+        self.write_image(&img, x, y - height_pt, width_pt, height_pt)?;
+        self.text_cursor.1 -= height_pt + 8.0;
+        Ok(self)
+    }
+
+    /// Flush the document to the pre-configured output stream (hutool pattern).
+    ///
+    /// For writers created with `new_from_writer`, this writes the PDF directly.
+    /// For file-based writers, use `finish(path)` instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no output stream is configured or serialization fails.
+    pub fn flush(&mut self) -> Result<()> {
+        let mut pages = std::mem::take(&mut self.pages);
+        let ops = std::mem::take(&mut self.current_page_ops);
+        if !ops.is_empty() {
+            let (w, h) = self.current_page_size;
+            pages.push(PdfPage::new(
+                Mm(w as f32 * PT_TO_MM as f32),
+                Mm(h as f32 * PT_TO_MM as f32),
+                ops,
+            ));
+        }
+        if pages.is_empty() {
+            let (w, h) = self.current_page_size;
+            pages.push(PdfPage::new(
+                Mm(w as f32 * PT_TO_MM as f32),
+                Mm(h as f32 * PT_TO_MM as f32),
+                Vec::new(),
+            ));
+        }
+        self.doc.with_pages(pages);
+        let save_opts = PdfSaveOptions::default();
+        let mut warnings = Vec::new();
+        if let Some(ref mut writer) = self.output {
+            self.doc
+                .save_writer(writer, &save_opts, &mut warnings);
+        }
+        Ok(())
     }
 
     /// Finalize the current page (push to pages vec) without starting a new one.
@@ -887,5 +1002,64 @@ mod tests {
         let mut w = PdfWriter::new("test");
         let r = w.register_font_from_bytes("bad", &[0, 1, 2]);
         assert!(r.is_err()); // invalid font data
+    }
+
+    #[test]
+    fn test_new_from_writer() {
+        let buf = Vec::new();
+        let mut w = PdfWriter::new_from_writer(buf);
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        w.add_text(&PdfFont::helvetica(12.0), "Hello stream").unwrap();
+        w.flush().unwrap();
+    }
+
+    #[test]
+    fn test_add_text_convenience() {
+        let mut w = PdfWriter::new("test");
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        w.add_text(&PdfFont::helvetica(14.0), "Line 1").unwrap();
+        w.add_text(&PdfFont::times_roman(12.0), "Line 2").unwrap();
+        w.add_text_colored(
+            &PdfFont::helvetica(12.0),
+            &PdfColor::red(),
+            "Red text",
+        ).unwrap();
+        let dir = std::env::temp_dir();
+        let path = dir.join("easypdf_add_text.pdf");
+        w.finish(&path).unwrap();
+        assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_add_image_from_path() {
+        let mut w = PdfWriter::new("test");
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        let png = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+            0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, 0x00, 0x00, 0x00,
+            0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+            0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59, 0xE7, 0x00, 0x00, 0x00,
+            0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        let dir = std::env::temp_dir();
+        let img_path = dir.join("test_img.png");
+        std::fs::write(&img_path, &png).unwrap();
+        w.add_image_from_path(&img_path, 50.0, 50.0).unwrap();
+        let out = dir.join("easypdf_add_img.pdf");
+        w.finish(&out).unwrap();
+        assert!(out.exists());
+        let _ = std::fs::remove_file(&img_path);
+        let _ = std::fs::remove_file(&out);
+    }
+
+    #[test]
+    fn test_flush_to_writer() {
+        let buf = Vec::new();
+        let mut w = PdfWriter::new_from_writer(buf);
+        w.add_page(PageSize::A4, Orientation::Portrait).unwrap();
+        w.add_text(&PdfFont::helvetica(10.0), "Flushed!").unwrap();
+        w.flush().unwrap();
     }
 }

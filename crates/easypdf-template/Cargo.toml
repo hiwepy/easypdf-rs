@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "PDF template and form filling for easypdf-rs (lopdf backend)"
+description = "PDF template and form filling for easypdf-rust (lopdf backend)"
 
 [dependencies]
 easypdf-core = { path = "../easypdf-core" }

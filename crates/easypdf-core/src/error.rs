@@ -1,10 +1,10 @@
-//! Error types for `easypdf-rs`.
+//! Error types for `easypdf-rust`.
 //!
 //! Provides the central `PdfError` enum and a convenience `Result` type alias.
 
 use std::io;
 
-/// Central error type for `easypdf-rs`.
+/// Central error type for `easypdf-rust`.
 ///
 /// Covers I/O, parsing, encryption, and unsupported-feature errors.
 #[derive(Debug, thiserror::Error)]

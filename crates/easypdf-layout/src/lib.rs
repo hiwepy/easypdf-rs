@@ -1,4 +1,4 @@
-//! Automatic layout engine for easypdf-rs (C2).
+//! Automatic layout engine for easypdf-rust (C2).
 //!
 //! Provides `FlowLayout` for auto-positioning content elements
 //! on PDF pages without manual (x, y) coordinate calculation.

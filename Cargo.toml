@@ -16,7 +16,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 license = "Apache-2.0"
-repository = "https://github.com/easypdf-rs/easypdf-rs"
+repository = "https://github.com/easy-4-rust/easypdf-rust"
 readme = "README.md"
 
 [workspace.dependencies]

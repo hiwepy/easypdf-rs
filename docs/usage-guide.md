@@ -1,4 +1,4 @@
-# easypdf-rs Usage Guide 使用指南
+# easypdf-rust Usage Guide 使用指南
 
 > 完整的 API 使用指南，覆盖创建、读取、操作、模板填充四大场景。  
 > Comprehensive usage guide covering all four major scenarios: Create, Read, Manipulate, Fill.

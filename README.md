@@ -1,4 +1,4 @@
-# easypdf-rs  ·  [English](#easypdf-rs)  |  [中文](#easypdf-rs-中文)
+# easypdf-rust  ·  [English](#easypdf-rust)  |  [中文](#easypdf-rust-中文)
 
 > **An idiomatic Rust library for quick PDF operations.**  
 > Inspired by [Alibaba EasyExcel](https://github.com/alibaba/easyexcel)'s builder-pattern API design.  
@@ -12,14 +12,14 @@
 
 ---
 
-`easypdf-rs` provides a fluent, type-safe builder API for all common PDF tasks:  
+`easypdf-rust` provides a fluent, type-safe builder API for all common PDF tasks:  
 **creation**, **reading & extraction**, **merge / split / rotate**, and **template / form filling**.
 
 📖 **[Usage Guide 使用指南 →](docs/usage-guide.md)**  |  🏗️ **[Architecture 架构 →](docs/architecture.md)**  |  ✅ **[Compatibility 兼容性 →](docs/compatibility.md)**
 
 ---
 
-`easypdf-rs` provides a fluent, type-safe builder API for all common PDF tasks:  
+`easypdf-rust` provides a fluent, type-safe builder API for all common PDF tasks:  
 **creation**, **reading & extraction**, **merge / split / rotate**, and **template / form filling**.
 
 ---
@@ -441,7 +441,7 @@ Apache-2.0
 
 ## Related Projects  |  相关项目
 
-- [easyexcel-rs](https://github.com/easypdf-rs/easyexcel-rs) — Rust port of Alibaba EasyExcel  
+- [easyexcel-rs](https://github.com/easypdf-rust/easyexcel-rs) — Rust port of Alibaba EasyExcel  
 - [easyexcel](https://github.com/alibaba/easyexcel) — Original Java library by Alibaba  
 - [lopdf](https://crates.io/crates/lopdf) — Pure Rust PDF manipulation library  
 - [printpdf](https://crates.io/crates/printpdf) — Pure Rust PDF generation library
@@ -449,5 +449,5 @@ Apache-2.0
 ---
 
 <p align="center">
-  <sub>Built with Rust 🦀 · Follows <a href="https://github.com/easypdf-rs/easyexcel-rs">easyexcel-rs</a> conventions</sub>
+  <sub>Built with Rust 🦀 · Follows <a href="https://github.com/easypdf-rust/easyexcel-rs">easyexcel-rs</a> conventions</sub>
 </p>

@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "PDF creation and writing for easypdf-rs (printpdf backend)"
+description = "PDF creation and writing for easypdf-rust (printpdf backend)"
 
 [dependencies]
 easypdf-core = { path = "../easypdf-core" }

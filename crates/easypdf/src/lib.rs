@@ -1,4 +1,4 @@
-//! # easypdf-rs
+//! # easypdf-rust
 //!
 //! An idiomatic Rust library for quick PDF operations: creation, reading,
 //! manipulation, and template filling. Inspired by Alibaba EasyExcel's
@@ -71,7 +71,7 @@ pub use easypdf_layout::Direction as LayoutDirection;
 
 use std::path::{Path, PathBuf};
 
-/// The main entry point for all `easypdf-rs` operations.
+/// The main entry point for all `easypdf-rust` operations.
 ///
 /// Provides static factory methods that return ergonomic builder chains
 /// for creating, reading, manipulating, and filling PDFs.

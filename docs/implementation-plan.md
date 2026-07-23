@@ -1,4 +1,4 @@
-# easypdf-rs Implementation Plan  ·  未实现功能实施规划
+# easypdf-rust Implementation Plan  ·  未实现功能实施规划
 
 > **Version**: 0.1.0 → target 1.0.0  |  **Date**: 2026-07-21  
 > **Status**: Planning  |  **Per-variant estimates**: S/M/L/XL (Small=1-2d / Medium=3-5d / Large=1-2w / XL=2-4w)
@@ -365,7 +365,7 @@ EasyPdf::create("out.pdf")
 - 强制嵌入所有字体
 - 设备无关颜色空间
 
-**建议**: 此功能推迟到社区出现成熟的 `pdf-a` crate 后再集成。easypdf-rs 可以提供校验钩子 `validate_pdfa(level: PdfALevel) -> Vec<ValidationError>`，但完整的实现工作量大。
+**建议**: 此功能推迟到社区出现成熟的 `pdf-a` crate 后再集成。easypdf-rust 可以提供校验钩子 `validate_pdfa(level: PdfALevel) -> Vec<ValidationError>`，但完整的实现工作量大。
 
 ---
 

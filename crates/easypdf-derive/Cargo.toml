@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "Proc-macro derive for PdfModel trait in easypdf-rs"
+description = "Proc-macro derive for PdfModel trait in easypdf-rust"
 
 [lib]
 proc-macro = true

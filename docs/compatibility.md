@@ -1,4 +1,4 @@
-# easypdf-rs Compatibility Matrix  ·  功能兼容性矩阵
+# easypdf-rust Compatibility Matrix  ·  功能兼容性矩阵
 
 > Tracks feature parity against the original design plan.  
 > Version: 0.1.0  |  Updated: 2026-07-21

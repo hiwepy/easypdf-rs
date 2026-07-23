@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "Core types, traits, enums, converters, and errors for easypdf-rs"
+description = "Core types, traits, enums, converters, and errors for easypdf-rust"
 
 [dependencies]
 thiserror.workspace = true

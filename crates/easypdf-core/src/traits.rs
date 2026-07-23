@@ -1,4 +1,4 @@
-//! Traits that define the core extension points for `easypdf-rs`.
+//! Traits that define the core extension points for `easypdf-rust`.
 //!
 //! Includes `PdfModel`, `PdfReadListener`, `PdfWriteHandler`, and `PdfConverter`.
 

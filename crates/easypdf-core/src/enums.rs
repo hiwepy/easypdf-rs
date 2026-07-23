@@ -1,4 +1,4 @@
-//! Enumerations used throughout `easypdf-rs`.
+//! Enumerations used throughout `easypdf-rust`.
 
 /// Standard page sizes in PDF points (1 point = 1/72 inch).
 #[derive(Debug, Clone, Copy, PartialEq)]

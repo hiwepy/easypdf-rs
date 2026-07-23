@@ -1,4 +1,4 @@
-#![doc = "Core types, traits, enums, converters, and errors for `easypdf-rs`."]
+#![doc = "Core types, traits, enums, converters, and errors for `easypdf-rust`."]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![deny(unsafe_code)]

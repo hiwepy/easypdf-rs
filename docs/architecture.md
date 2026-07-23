@@ -1,7 +1,7 @@
-# easypdf-rs Architecture Design Document  ·  架构设计文档
+# easypdf-rust Architecture Design Document  ·  架构设计文档
 
 > **Version**: 0.1.0  |  **Date**: 2026-07-21  |  **Status**: Phase 1 Complete  
-> **Author**: easypdf-rs team  |  **License**: Apache-2.0
+> **Author**: easypdf-rust team  |  **License**: Apache-2.0
 
 ---
 
@@ -26,8 +26,8 @@
 
 ## 1. Project Vision 项目愿景
 
-`easypdf-rs` aims to provide **the same developer experience for PDF operations** that
-[easyexcel-rs](https://github.com/easypdf-rs/easyexcel-rs) provides for Excel:
+`easypdf-rust` aims to provide **the same developer experience for PDF operations** that
+[easyexcel-rs](https://github.com/easypdf-rust/easyexcel-rs) provides for Excel:
 
 > **Type-safe Builders + Compile-time Reflection + Multi-engine Backends = Ergonomic PDF manipulation in idiomatic Rust.**
 
@@ -60,7 +60,7 @@ The library covers four primary use cases:
 ## 3. Crate Architecture 包架构
 
 ```
-easypdf-rs/
+easypdf-rust/
 ├── Cargo.toml                     Virtual workspace (edition 2024, resolver="3")
 │
 ├── crates/
@@ -552,7 +552,7 @@ proc_macro::TokenStream
 
 ### 10.3 Comparison: Java Annotations vs Rust Derive
 
-| Aspect | Java EasyExcel | Rust easypdf-rs |
+| Aspect | Java EasyExcel | Rust easypdf-rust |
 |:---|:---|:---|
 | Annotation | `@ExcelProperty(index=0)` | `#[pdf(text, position = (x, y))]` |
 | Processing | Runtime reflection | Compile-time code gen |
@@ -611,7 +611,7 @@ pub trait PdfConverter<T>: Send {
 
 ## 12. Conventions from easyexcel-rs 继承约定
 
-| Convention 约定 | easyexcel-rs | easypdf-rs | Notes |
+| Convention 约定 | easyexcel-rs | easypdf-rust | Notes |
 |:---|:---|:---|:---|
 | **Workspace** | Virtual manifest + shared `[workspace.dependencies]` | ✅ Same | `resolver = "3"`, edition 2024 |
 | **Crate naming** | `easyexcel`, `easyexcel-core`, `easyexcel-derive`, ... | `easypdf`, `easypdf-core`, `easypdf-derive`, ... | ✅ Same pattern |
@@ -634,7 +634,7 @@ pub trait PdfConverter<T>: Send {
 
 Understanding these differences is critical for API design:
 
-| Dimension | Excel (easyexcel-rs) | PDF (easypdf-rs) |
+| Dimension | Excel (easyexcel-rs) | PDF (easypdf-rust) |
 |:---|:---|:---|
 | **Layout model** | Grid-based (rows × columns) | Coordinate-based (x, y in points) |
 | **Streaming** | Row-by-row SAX parsing | Page-by-page parsing |

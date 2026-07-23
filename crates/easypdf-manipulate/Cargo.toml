@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
-description = "PDF manipulation (merge, split, rotate, reorder) for easypdf-rs (lopdf backend)"
+description = "PDF manipulation (merge, split, rotate, reorder) for easypdf-rust (lopdf backend)"
 
 [dependencies]
 easypdf-core = { path = "../easypdf-core" }
